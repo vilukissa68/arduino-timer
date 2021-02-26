@@ -1,15 +1,22 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <avr/io.h>
 #include <util/delay.h>
 
+#define LED_DDR     DDRB
+#define LED_PIN     PINB
+#define LED         PB5
 
-int main () {
-  DDRB |= _BV(DDB5);
+int main(void)
+{
+  DDRB = 0xFF;
 
-  while(1) {
-    PORTB |= _BV(PORTB5);
-    _delay_ms(1000);
+  while (1)
+    {
+      PORTB ^= 0xFF;
+      _delay_ms(500);
+    }
 
-    PORTB &= ~_BV(PORTB5);
-    _delay_ms(1000);
-  }
+  return(0);
 }

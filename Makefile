@@ -1,21 +1,34 @@
-PORT=\\\\.\\GLOBALROOT\\Device\\USBSER000
-MCU=atmega32u4
-CFLAGS=-g -Wall -mcall-prologues -mmcu=$(MCU) -Os
-LDFLAGS=-Wl,-gc-sections -Wl,-relax
-CC=avr-gcc
-TARGET=main
-OBJECT_FILES=main.o
+MCU         = atmega328p
+TARGET_ARCH = -mmcu=$(MCU)
+TARGET      = main
+CC          = avr-gcc
+CPPFLAGS    = -mmcu=$(MCU)
+CFLAGS      = -Os -g -Wall -I. -DF_CPU=16000000UL
+LDFLAGS     = -g -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
+PGMER       = -c arduino -b 115200 -P /dev/ttyACM0
+PGMERISP    = -c avrispv2 -P /dev/ttyACM0
+DUDE        = /usr/bin/avrdude -V -p $(MCU)
 
-all: $(TARGET).hex
+C_SRCS      = $(wildcard *.c)
+OBJ_FILES   = $(C_SRCS:.c=.o)
+
+all:    $(TARGET).hex
 
 clean:
-	rm -f *.o *.hex *.obj *.hex
+		rm -f $(TARGET).elf *.o *.hex
 
-%.hex: %.obj
-	avr-objcopy -R .eeprom -O ihex $< $@
+%.o: %.c
+		$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-%.obj: $(OBJECT_FILES)
-	$(CC) $(CFLAGS) $(OBJECT_FILES) $(LDFLAGS) -o $@
+$(TARGET).elf: $(OBJ_FILES)
+		$(CC) $(LDFLAGS) -o $@ $(OBJ_FILES)
 
-program: $(TARGET).hex
-	avrdude -p $(MCU) -c avr109 -P $(PORT) -U flash:w:$(TARGET).hex
+$(TARGET).hex: $(TARGET).elf
+		avr-objcopy -j .text -j .data -O ihex $(TARGET).elf $(TARGET).hex
+		avr-objcopy -j .eeprom --set-section-flags=.eeprom="alloc,load" --change-section-lma .eeprom=0 -O ihex main.elf eeprom.hex
+
+upload: $(TARGET).hex
+		$(DUDE) $(PGMER) -U flash:w:main.hex
+
+size: main.elf
+		avr-size --format=avr --mcu=$(MCU) main.elf
